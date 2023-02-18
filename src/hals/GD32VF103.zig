@@ -1,15 +1,13 @@
-pub const cpu = @import("cpu");
-pub const micro = @import("microzig");
-pub const chip = @import("registers.zig");
-const regs = chip.registers;
-
-pub usingnamespace chip;
+const micro = @import("microzig");
+const peripherals = micro.chip.peripherals;
+const UART3 = peripherals.UART3;
+const UART4 = peripherals.UART4;
 
 pub const clock_frequencies = .{
     .cpu = 8_000_000, // 8 MHz
 };
 
-pub fn parsePin(comptime spec: []const u8) type {
+pub fn parse_pin(comptime spec: []const u8) type {
     const invalid_format_msg = "The given pin '" ++ spec ++ "' has an invalid format. Pins must follow the format \"P{Port}{Pin}\" scheme.";
 
     if (spec[0] != 'P')
@@ -21,23 +19,23 @@ pub fn parsePin(comptime spec: []const u8) type {
         const pin_number: comptime_int = @import("std").fmt.parseInt(u2, spec[2..], 10) catch @compileError(invalid_format_msg);
         // 'A'...'E'
         const gpio_port_name = spec[1..2];
-        const gpio_port = @field(regs, "GPIO" ++ gpio_port_name);
+        const gpio_port = @field(peripherals, "GPIO" ++ gpio_port_name);
         const suffix = @import("std").fmt.comptimePrint("{d}", .{pin_number});
     };
 }
 
-fn setRegField(reg: anytype, comptime field_name: anytype, value: anytype) void {
+fn set_reg_field(reg: anytype, comptime field_name: anytype, value: anytype) void {
     var temp = reg.read();
     @field(temp, field_name) = value;
     reg.write(temp);
 }
 
 pub const gpio = struct {
-    pub fn setOutput(comptime pin: type) void {
+    pub fn set_output(comptime pin: type) void {
         _ = pin;
         // TODO: check if pin is already configured as output
     }
-    pub fn setInput(comptime pin: type) void {
+    pub fn set_input(comptime pin: type) void {
         _ = pin;
         // TODO: check if pin is already configured as input
     }
@@ -82,8 +80,8 @@ pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
 
     return struct {
         const UARTn = switch (index) {
-            0 => regs.UART3,
-            1 => regs.UART4,
+            0 => UART3,
+            1 => UART4,
             else => @compileError("GD32VF103 has 2 UARTs available."),
         };
         const Self = @This();
@@ -93,21 +91,21 @@ pub fn Uart(comptime index: usize, comptime pins: micro.uart.Pins) type {
             return Self{};
         }
 
-        pub fn canWrite(self: Self) bool {
+        pub fn can_write(self: Self) bool {
             _ = self;
             return false;
         }
         pub fn tx(self: Self, ch: u8) void {
             _ = ch;
-            while (!self.canWrite()) {} // Wait for Previous transmission
+            while (!self.can_write()) {} // Wait for Previous transmission
         }
 
-        pub fn canRead(self: Self) bool {
+        pub fn can_read(self: Self) bool {
             _ = self;
             return false;
         }
         pub fn rx(self: Self) u8 {
-            while (!self.canRead()) {} // Wait till the data is received
+            while (!self.can_read()) {} // Wait till the data is received
             return 1; // Read received data
         }
     };
